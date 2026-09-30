@@ -1,42 +1,32 @@
-# API Endpoints For Backend
+# ByteBattles API
 
-## Authentication
+Interactive documentation: `/docs`. Machine-readable schema: `/openapi.json`.
 
-D - `POST /auth/register` : new userss can register
-D - `POST /auth/login` : existing userss can login
-D - `POST /auth/refresh`: get access token from refresh token
-S - `POST /auth/logout` : loggedin users can logout (NOT NEEDED RIGHT NOW)                                       (Loggedin: users)
+| Method | Route | Access / purpose |
+| --- | --- | --- |
+| POST | `/auth/register` | Register a normal user; validated password and email |
+| POST | `/auth/login` | OAuth2 form login; rate-limited |
+| POST | `/auth/refresh` | Valid refresh token for an existing account/session |
+| GET | `/users/me` | Current user, including role |
+| PATCH | `/users/me` | Update own profile/password; password change invalidates old tokens |
+| DELETE | `/users/me` | Delete own account; last admin protected |
+| POST | `/users/bootstrap-admin` | Signed-in user plus private `X-Bootstrap-Token`; only if no admin exists |
+| POST | `/users/{username}/promote` | Admin-only promotion |
+| GET | `/users/{username}` | Public profile; email only when viewing yourself |
+| GET | `/problems/` | Visible problems; admins also see hidden problems |
+| GET | `/problems/tags` | Available tags |
+| POST | `/problems/tag` | Admin-only tag creation |
+| GET | `/problems/{problem_id}` | Problem statement/examples/limits |
+| POST | `/problems/` | Admin-only multipart problem/testcase creation |
+| DELETE | `/problems/?problem_id=...` | Admin-only deletion with durable storage cleanup |
+| POST | `/submissions/` | Signed-in, rate-limited submission; durable pending result |
+| GET | `/submissions/` | Submission headers for a username or the signed-in user |
+| GET | `/submissions/{submission_id}` | Owner/admin details; source is not public |
+| GET | `/healthz` | API/database health |
+| GET | `/app` | Browser interface |
 
-## Users (Profile)
+Problem-list query parameters: `page`, `limit`, `title`, `difficulty`, `tag`, `metadata`. `metadata=true` returns `{items,total,page,limit,has_more}`. The default remains an array for compatibility. `X-Total-Count` and `X-Has-More` headers are included.
 
- - `GET /users/<usersname>` : get profile of any users
- - `GET /users/<usersname>/submissions` : get all submissions of any users
- - `GET /users/<usersname>/solved_problems` : get all solved problems of any users
+Submission limits return 429 with `Retry-After`. If Redis is unavailable at admission, return 503; already accepted submissions are recovered by the durable dispatcher. Source is limited to 64 KB by default. Hidden testcase input is returned only to administrators.
 
-D - `GET /users/me` : get profile of logged in users                                                             (Loggedin: users)
-D - `PATCH /users/me` : update logged in users's details                                                         (Loggedin: users)
-D - `DELETE /users/me` : delete logged in users                                                                  (Loggedin: users)
-
-## Problems
-
-D - `GET /problems` : get all the problems                                                                       (Loggedin: Admin | None)
-D - `GET /problems/<id>` : get details for the problem with given id                                             (Loggedin: Admin | None)
-
-D - `POST /problems/tag` : create a new tag                                                                      (Loggedin: Admin)
-
-D - `POST /problems` : create a new problem                                                                      (Loggedin: Admin)
- - `PATCH /problems/<id>` : edit details of problem with given id                                               (Loggedin: Admin)
- - `DELETE /problems/<id>` : delete problem with given id                                                       (Loggedin: Admin)
- - `POST /problems/<id>/rejudge` : re run all the submissions of the problem with given id                      (Loggedin: Admin)
-
-## Submissions
-
-D - `POST /submissions` : create new submission                                                                  (Loggedin: users)
-D - `GET /submissions` : view all submissions for users {prob_id, username(optional) : query param}
-D - `GET /submissions/<sub_id>` : get details of submission with sub_id
-
-# NOTES:
-
- - Verify that user is verified in every user query
- - Verify that problem is visible in every problem query
- - Process the file read for testcase data zip file in chunks
+Problem IDs are 1–6 letters/numbers/underscores/hyphens. ZIP and execution limits are described in `SETUP.md`. Problem metadata/testcase editing and a fourth language are not part of this repair pass.

@@ -3,11 +3,7 @@ from .submission import Submission
 from .problem import Problem, Category, TestCase, Tag
 from .enums import UserType, Difficulty, Verdict, Language
 
-FILENAME = {
-    Language.C: "main.c",
-    Language.CPP: "main.cpp",
-    Language.PYTHON: "main.py"
-}
+FILENAME = {Language.C: "main.c", Language.CPP: "main.cpp", Language.PYTHON: "main.py"}
 
 IMAGE = {
     Language.C: "judge-gcc:latest",
@@ -15,8 +11,6 @@ IMAGE = {
     Language.PYTHON: "judge-python:latest",
 }
 
-EXTENSIONS = {
-    Language.C: "c",
-    Language.CPP: "cpp",
-    Language.PYTHON: "py"
-}
+EXTENSIONS = {Language.C: "c", Language.CPP: "cpp", Language.PYTHON: "py"}
+
+from .job import JudgeJob, StorageDeletion

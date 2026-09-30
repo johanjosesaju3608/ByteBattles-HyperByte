@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from datetime import datetime
 
 import re
@@ -6,11 +6,12 @@ import re
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{3,20}$"
 PASSWORD_REGEX = r"^(?=.*[A-Za-z])(?=.*\d).{8,}$"
 
+
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
-    password: str
-    conf_password: str
+    password: str = Field(max_length=256)
+    conf_password: str = Field(max_length=256)
 
     @field_validator("username")
     @classmethod
@@ -20,7 +21,7 @@ class UserCreate(BaseModel):
                 "Username must be 3–20 chars and contain only letters, numbers, underscores"
             )
         return v
-    
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v):
@@ -29,12 +30,13 @@ class UserCreate(BaseModel):
                 "Password must be at least 8 chars and include letters + numbers"
             )
         return v
+
 
 class UserUpdate(BaseModel):
     username: str | None = None
     email: EmailStr | None = None
-    password: str | None = None
-    conf_password: str | None = None
+    password: str | None = Field(default=None, max_length=256)
+    conf_password: str | None = Field(default=None, max_length=256)
 
     @field_validator("username")
     @classmethod
@@ -46,7 +48,7 @@ class UserUpdate(BaseModel):
                 "Username must be 3–20 chars and contain only letters, numbers, underscores"
             )
         return v
-    
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, v):
@@ -57,20 +59,26 @@ class UserUpdate(BaseModel):
                 "Password must be at least 8 chars and include letters + numbers"
             )
         return v
+
 
 class UserResponseUnknown(BaseModel):
     username: str
     is_verified: bool
     created_at: datetime
 
+
 class UserResponse(BaseModel):
+    user_type: str = "USER"
     username: str
     email: EmailStr
     is_verified: bool
     created_at: datetime
 
+
 class TokenPayload(BaseModel):
     sub: int
+    session_version: str | None = None
+
 
 class RefreshAccessTokenRequest(BaseModel):
     refresh_token: str

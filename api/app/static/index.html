@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ByteBattles</title>
+  <style>
+    /* ---------- Palette (single light palette; dark mode = filter inversion) ---------- */
+    :root {
+      --bg: #ffffff;
+      --surface: #f4f4f5;
+      --text: #18181b;
+      --muted: #71717a;
+      --border: #d4d4d8;
+      --accent: #4f46e5;
+      --accent-contrast: #ffffff;
+      --green: #16a34a;
+      --amber: #d97706;
+      --red: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---------- Dark mode ----------
+       Inverts blacks and whites; hue-rotate keeps colored accents colored.
+       .keep-color elements get the inverse filter, so their true colors
+       survive the page-wide inversion (double inversion = original color). */
+    html.dark {
+      filter: invert(1) hue-rotate(180deg);
+      background: var(--bg);
+    }
+    html.dark img,
+    html.dark video,
+    html.dark .keep-color {
+      filter: invert(1) hue-rotate(180deg);
+    }
+    .keep-color:hover { filter: invert(1) hue-rotate(180deg) brightness(1.08); }
+
+    /* ---------- Header ---------- */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1.1rem 1rem 0.25rem;
+    }
+    h1 { font-size: 1.45rem; margin: 0; letter-spacing: -0.01em; }
+
+    /* ---------- Dark-mode toggle (top right, aligned with the title) ---------- */
+    #bm-toggle {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0.9rem;
+      font: inherit;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+    }
+    #bm-toggle:hover { border-color: var(--accent); }
+    .bm-swatch {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+    .bm-swatch.black { background: #000; }
+    .bm-swatch.white { background: #fff; }
+    .bm-swatch.color { background: var(--accent); }
+
+    /* ---------- Layout ---------- */
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: grid;
+      gap: 1rem;
+    }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+    }
+    h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+    h3 { font-size: 0.95rem; margin: 0.25rem 0 0.5rem; }
+    p, li { line-height: 1.5; }
+    a { color: var(--accent); }
+    code, pre, textarea {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    code {
+      font-size: 0.85em;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.1em 0.35em;
+    }
+    pre {
+      margin: 0.5rem 0 0;
+      padding: 0.7rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    fieldset {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin: 0 0 1rem;
+      padding: 0.25rem 0.9rem 0.9rem;
+    }
+    legend { padding: 0 0.4em; font-size: 0.8rem; color: var(--muted); }
+    label { display: block; margin: 0.6rem 0 0.25rem; font-size: 0.8rem; color: var(--muted); }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      font: inherit;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    textarea { min-height: 130px; resize: vertical; }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    button[type="submit"], .btn {
+      margin-top: 0.9rem;
+      padding: 0.5rem 1rem;
+      font: inherit;
+      font-size: 0.9rem;
+      color: var(--accent-contrast);
+      background: var(--accent);
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .msg { min-height: 1.2em; font-size: 0.85rem; margin: 0.5rem 0 0; color: var(--muted); }
+    .msg.err { color: var(--red); }
+    .msg.ok { color: var(--green); }
+    .hint { font-size: 0.8rem; color: var(--muted); margin: 0.4rem 0 0; }
+
+    .tag {
+      display: inline-block;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.1rem 0.55rem;
+      font-size: 0.72rem;
+      margin: 0.25rem 0.25rem 0 0;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 0.1rem 0.55rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .d-EASY { background: var(--green); }
+    .d-MEDIUM { background: var(--amber); }
+    .d-HARD { background: var(--red); }
+    .v-AC { background: var(--green); }
+    .v-WA { background: var(--red); }
+    .v-PD { background: var(--muted); }
+    .v-TLE, .v-MLE, .v-CE, .v-RE, .v-SKP { background: var(--amber); }
+
+    .prob-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+    .prob-head a { font-weight: 600; text-decoration: none; }
+    .prob-meta { font-size: 0.78rem; color: var(--muted); margin: 0.15rem 0 0; }
+    .prob { padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+    .prob:last-child { border-bottom: none; }
+    .row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .row .grow { flex: 1; }
+
+    table { border-collapse: collapse; width: 100%; font-size: 0.83rem; }
+    th, td { border: 1px solid var(--border); padding: 0.35rem 0.5rem; text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+
+    #toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.25rem;
+      transform: translateX(-50%);
+      max-width: 90vw;
+      padding: 0.55rem 1rem;
+      background: var(--text);
+      color: var(--bg);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 10;
+    }
+    #toast.show { opacity: 1; }
+    [hidden] { display: none !important; }
+    details { margin: 1rem 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    #problem-details { margin-top: 1.5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #mine { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ByteBattles</h1>
+    <button id="bm-toggle" type="button" aria-pressed="false" aria-label="Toggle dark mode">
+      <span class="bm-swatch black keep-color"></span>
+      <span class="bm-swatch white keep-color"></span>
+      <span class="bm-swatch color keep-color"></span>
+      <span id="bm-toggle-text"><span class="keep-color">&#127769;</span> Dark</span>
+    </button>
+  </header>
+
+  <main>
+    <section id="sec-problems">
+      <h2>Problems</h2>
+      <form id="filter-form" class="row">
+        <div class="grow"><label for="search-title">Search title</label><input id="search-title" maxlength="100"></div>
+        <div class="grow"><label for="filter-difficulty">Difficulty</label><select id="filter-difficulty"><option value="">All</option><option>EASY</option><option>MEDIUM</option><option>HARD</option></select></div>
+        <div class="grow"><label for="filter-tag">Tag</label><select id="filter-tag"><option value="">All tags</option></select></div>
+        <button type="submit">Search</button>
+      </form>
+      <div id="problems"><p class="hint">Loading&hellip;</p></div>
+      <div class="row"><button id="prev-page" type="button">Previous</button><span id="page-info" aria-live="polite"></span><button id="next-page" type="button">Next</button></div>
+      <article id="problem-details" hidden aria-live="polite"></article>
+    </section>
+
+    <section id="sec-account">
+      <h2>Account</h2>
+      <p id="who" class="hint">Not logged in.</p><button id="logout" type="button" hidden>Log out</button>
+      <fieldset>
+        <legend>Login</legend>
+        <form id="login-form">
+          <label for="login-user">Username or email</label>
+          <input id="login-user" name="username" autocomplete="username" required>
+          <label for="login-pass">Password</label>
+          <input id="login-pass" name="password" type="password" autocomplete="current-password" required>
+          <button type="submit">Log in</button>
+          <p id="login-msg" class="msg"></p>
+        </form>
+      </fieldset>
+      <fieldset>
+        <legend>Register</legend>
+        <form id="register-form">
+          <label for="reg-user">Username</label>
+          <input id="reg-user" autocomplete="off" required>
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" autocomplete="off" required>
+          <label for="reg-pass">Password</label>
+          <input id="reg-pass" type="password" autocomplete="new-password" required>
+          <label for="reg-pass2">Confirm password</label>
+          <input id="reg-pass2" type="password" autocomplete="new-password" required>
+          <button type="submit">Create account</button>
+          <p id="register-msg" class="msg"></p>
+        </form>
+      </fieldset>
+    </section>
+
+    <section id="sec-bootstrap" hidden>
+      <details><summary>First administrator setup</summary><p>The project owner can use the private bootstrap token from their local configuration once. An existing administrator can promote teammates.</p>
+      <form id="bootstrap-form"><label for="bootstrap-token">Bootstrap token</label><input id="bootstrap-token" type="password" autocomplete="off" required><button>Become administrator</button><p id="bootstrap-msg" class="msg"></p></form></details>
+    </section>
+    <section id="sec-admin" hidden>
+      <h2>Administration</h2>
+      <details><summary>Create a tag</summary><form id="tag-form">
+        <label for="tag-name">Name</label><input id="tag-name" required maxlength="80">
+        <label for="tag-slug">Short tag (lowercase letters, numbers, hyphens)</label><input id="tag-slug" required pattern="[a-z0-9][a-z0-9-]{0,39}">
+        <button>Create tag</button><p id="tag-msg" class="msg"></p></form></details>
+      <details><summary>Create a problem</summary><form id="problem-form">
+        <label for="new-id">Problem ID (up to 6 letters, numbers, underscores or hyphens)</label><input id="new-id" required pattern="[A-Za-z0-9_-]{1,6}">
+        <label for="new-title">Title</label><input id="new-title" required maxlength="150">
+        <label for="new-description">Statement</label><textarea id="new-description" required></textarea>
+        <label for="new-difficulty">Difficulty</label><select id="new-difficulty"><option>EASY</option><option>MEDIUM</option><option>HARD</option></select>
+        <label for="new-tags">Existing tags, separated by commas</label><input id="new-tags" placeholder="math, arrays">
+        <label for="new-constraints">Constraints (one per line)</label><textarea id="new-constraints" required></textarea>
+        <label for="new-input-desc">Input format</label><input id="new-input-desc" required>
+        <label for="new-output-desc">Output format</label><input id="new-output-desc" required>
+        <label for="new-sample-input">Example input</label><textarea id="new-sample-input"></textarea>
+        <label for="new-sample-output">Example output</label><textarea id="new-sample-output"></textarea>
+        <div class="row"><div><label for="new-time">Time limit (seconds, 1–10)</label><input id="new-time" type="number" value="2" min="1" max="10" required></div><div><label for="new-memory">Memory limit (MB, 16–512)</label><input id="new-memory" type="number" value="128" min="16" max="512" required></div></div>
+        <label for="new-tests">Testcases ZIP (up to 8 MB)</label><input id="new-tests" type="file" accept=".zip" required>
+        <p class="hint">Include inputs/1.txt and outputs/1.txt for each matching pair. Up to 100 pairs, 1 MB per file, 16 MB total expanded.</p>
+        <label><input id="new-visible" type="checkbox" checked> Visible to students</label><button>Create problem</button><p id="problem-msg" class="msg"></p>
+      </form></details>
+      <details><summary>Promote a teammate</summary><form id="promote-form"><label for="promote-user">Username</label><input id="promote-user" required><button>Make administrator</button><p id="promote-msg" class="msg"></p></form></details>
+    </section>
+    <section id="sec-submit">
+      <h2>Submit</h2>
+      <form id="submit-form">
+        <div class="row">
+          <div class="grow">
+            <label for="sub-problem">Problem ID</label>
+            <input id="sub-problem" autocomplete="off" placeholder="e.g. two-sum" required>
+          </div>
+          <div class="grow">
+            <label for="sub-language">Language</label>
+            <select id="sub-language">
+              <option value="C">C</option>
+              <option value="CPP" selected>C++</option>
+              <option value="PY">Python</option>
+            </select>
+          </div>
+        </div>
+        <label for="sub-code">Source code</label>
+        <textarea id="sub-code" spellcheck="false" required></textarea>
+        <button type="submit">Submit solution</button>
+        <p id="submit-msg" class="msg"></p>
+      </form>
+      <div id="verdict-box" hidden>
+        <h3>Latest verdict</h3>
+        <p class="prob-meta" id="verdict-meta"></p>
+        <pre id="verdict-output"></pre><button id="resume-poll" type="button" hidden>Check again</button>
+      </div>
+    </section>
+
+    <section id="sec-mine">
+      <h2>My submissions</h2>
+      <div id="mine"><p class="hint">No submissions shown.</p></div>
+    </section>
+  </main>
+
+  <div id="toast" role="status"></div>
+
+  <script>
+    'use strict';
+
+    /* ============ Dark mode toggle ============ */
+    (function () {
+      var root = document.documentElement;
+      var btn = document.getElementById('bm-toggle');
+      var text = document.getElementById('bm-toggle-text');
+      var KEY = 'bb-theme';
+
+      function apply(dark) {
+        root.classList.toggle('dark', dark);
+        btn.setAttribute('aria-pressed', String(dark));
+        text.innerHTML = '<span class="keep-color">' + (dark ? '&#9728;&#65039;' : '&#127769;') + '</span> ' + (dark ? 'Light' : 'Dark');
+      }
+
+      var saved = null;
+      try { saved = localStorage.getItem(KEY); } catch (e) { /* storage unavailable */ }
+      apply(saved === 'dark');
+
+      btn.addEventListener('click', function () {
+        var dark = !root.classList.contains('dark');
+        apply(dark);
+        try { localStorage.setItem(KEY, dark ? 'dark' : 'light'); } catch (e) { /* ignore */ }
+      });
+    })();
+
+    /* ============ Tiny helpers ============ */
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    var toastTimer = null;
+    function toast(msg) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3200);
+    }
+    function setMsg(id, text, cls) {
+      var el = $(id);
+      el.textContent = text;
+      el.className = 'msg' + (cls ? ' ' + cls : '');
+    }
+    function fmtDate(iso) {
+      if (!iso) return '';
+      try { return new Date(/[zZ]|[+-]\d\d:\d\d$/.test(iso) ? iso : iso+'Z').toLocaleString(); } catch (e) { return iso; }
+    }
+    function verdictBadge(v) {
+      return '<span class="badge keep-color v-' + esc(v) + '">' + esc(v) + '</span>';
+    }
+    function diffBadge(d) {
+      return '<span class="badge keep-color d-' + esc(d) + '">' + esc(d) + '</span>';
+    }
+
+    var TOKEN_KEY='bb_access', REFRESH_KEY='bb_refresh', refreshing=null;
+    // Authentication lasts for this browser tab; discard legacy persistent tokens.
+    try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(REFRESH_KEY); } catch (_) {}
+    function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+    function saveTokens(access,refresh) {
+      if(access) sessionStorage.setItem(TOKEN_KEY,access);
+      if(refresh) sessionStorage.setItem(REFRESH_KEY,refresh);
+    }
+    function clearTokens() { sessionStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(REFRESH_KEY); }
+    async function api(path,options={},retried=false) {
+      const headers={...(options.headers||{})};
+      if(options.body && !(options.body instanceof URLSearchParams) && !(options.body instanceof FormData)) headers['Content-Type']='application/json';
+      if(getToken()) headers.Authorization='Bearer '+getToken();
+      const res=await fetch(path,{...options,headers,signal:AbortSignal.timeout(20000)});
+      if(res.status===401 && !retried && !path.startsWith('/auth/') && sessionStorage.getItem(REFRESH_KEY)) {
+        if(!refreshing) refreshing=(async()=>{
+          const data=await api('/auth/refresh',{method:'POST',body:JSON.stringify({refresh_token:sessionStorage.getItem(REFRESH_KEY)})},true);
+          saveTokens(data.access_token);
+        })().finally(()=>{refreshing=null;});
+        try { await refreshing; return await api(path,options,true); }
+        catch(error) { if(error.status===401) {clearTokens(); refreshIdentity();} throw error; }
+      }
+      if(res.status===204) return null;
+      const data=await res.json().catch(()=>null);
+      if(!res.ok) {
+        let detail=data?.detail || ('HTTP '+res.status);
+        if(Array.isArray(detail)) detail=detail.map(x=>x.loc.join('.')+': '+x.msg).join('; ');
+        const err=new Error(detail+(res.status===429?' Retry in '+res.headers.get('Retry-After')+' seconds.':''));
+        err.status=res.status; throw err;
+      }
+      return data;
+    }
+
+    let page=1, problemLoad=0;
+    async function loadProblems() {
+      const generation=++problemLoad;
+      const query=new URLSearchParams({page,limit:10,metadata:'true'});
+      for(const [key,id] of [['title','search-title'],['difficulty','filter-difficulty'],['tag','filter-tag']]) if($(id).value) query.set(key,$(id).value);
+      try {
+        const data=await api('/problems/?'+query);
+        if(generation!==problemLoad) return;
+        $('problems').innerHTML=data.items.map(p=>'<div class="prob"><div class="prob-head"><a href="#problem-details" data-problem="'+esc(p.id)+'">'+esc(p.title)+'</a>'+diffBadge(p.difficulty)+'</div><p>'+p.accepted_submissions+' accepted / '+p.total_submissions+' submissions</p><p>'+p.tags.map(esc).join(', ')+'</p></div>').join('') || '<p>No matching problems.</p>';
+        $('page-info').textContent='Page '+page+' · '+data.total+' problems';
+        $('prev-page').disabled=page===1; $('next-page').disabled=!data.has_more;
+      } catch(e) { $('problems').textContent='Could not load problems: '+e.message; }
+    }
+    async function loadTags() {
+      try { const tags=await api('/problems/tags'); $('filter-tag').innerHTML='<option value="">All tags</option>'+tags.map(t=>'<option value="'+esc(t.slug)+'">'+esc(t.name)+'</option>').join(''); }
+      catch(e) { toast(e.message); }
+    }
+    $('filter-form').onsubmit=e=>{e.preventDefault();page=1;loadProblems();};
+    $('prev-page').onclick=()=>{if(page>1) {page--;loadProblems();}};
+    $('next-page').onclick=()=>{page++;loadProblems();};
+    $('problems').onclick=async e=>{
+      const link=e.target.closest('[data-problem]'); if(!link) return;
+      e.preventDefault(); const box=$('problem-details'); box.hidden=false; box.textContent='Loading statement…';
+      try {
+        const p=await api('/problems/'+encodeURIComponent(link.dataset.problem));
+        $('sub-problem').value=p.id;
+        box.innerHTML='<h3>'+esc(p.title)+'</h3><p>'+esc(p.description)+'</p><h4>Input</h4><p>'+esc(p.input_desc)+'</p><h4>Output</h4><p>'+esc(p.output_desc)+'</p><h4>Constraints</h4><p>'+p.constraints.map(esc).join('\n')+'</p><p>'+p.time_limit_sec+' seconds · '+p.memory_limit_mb+' MB</p><h4>Examples</h4>'+Object.entries(p.sample_io).map(([i,o])=>'<p>Input</p><pre>'+esc(i)+'</pre><p>Output</p><pre>'+esc(o)+'</pre>').join('')+(p.explanation?'<p>'+esc(p.explanation)+'</p>':'');
+        box.scrollIntoView({behavior:'smooth',block:'start'});
+      } catch(error) {box.textContent=error.message;}
+    };
+
+    /* ============ Auth ============ */
+    $('login-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var body = new URLSearchParams({
+        username: $('login-user').value.trim(),
+        password: $('login-pass').value
+      });
+      api('/auth/login', { method: 'POST', body: body }).then(function (data) {
+        saveTokens(data.access_token, data.refresh_token);
+        $('login-pass').value='';
+        setMsg('login-msg', 'Logged in.', 'ok');
+        refreshIdentity();
+        loadMine();
+      }).catch(function (err) {
+        setMsg('login-msg', err.message, 'err');
+      });
+    });
+
+    $('register-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if ($('reg-pass').value !== $('reg-pass2').value) {
+        setMsg('register-msg', 'Passwords do not match.', 'err');
+        return;
+      }
+      api('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: $('reg-user').value.trim(),
+          email: $('reg-email').value.trim(),
+          password: $('reg-pass').value,
+          conf_password: $('reg-pass2').value
+        })
+      }).then(function () {
+        setMsg('register-msg', 'Account created — you can log in now.', 'ok');
+        $('login-user').value = $('reg-user').value.trim();
+        $('reg-pass').value = '';
+        $('reg-pass2').value = '';
+      }).catch(function (err) {
+        setMsg('register-msg', err.message, 'err');
+      });
+    });
+
+    async function refreshIdentity() {
+      $('sec-admin').hidden=true; $('sec-bootstrap').hidden=true; $('logout').hidden=!getToken();
+      if(!getToken()) { $('who').textContent='Not logged in.'; return; }
+      try {
+        const user=await api('/users/me');
+        $('who').textContent='Logged in as '+user.username+' · '+user.user_type;
+        $('sec-admin').hidden=user.user_type!=='ADMIN';
+        $('sec-bootstrap').hidden=user.user_type==='ADMIN';
+        loadProblems();
+      } catch(e) {
+        if(e.status===401) clearTokens();
+        $('who').textContent=e.message; $('logout').hidden=!getToken();
+      }
+    }
+    $('logout').onclick=()=>{clearTokens();pollGeneration++;refreshIdentity();loadMine();loadProblems();};
+    function adminForm(id,message,action) {
+      $(id).onsubmit=async e=>{
+        e.preventDefault(); const button=e.submitter; button.disabled=true;
+        try {await action();setMsg(message,'Done.','ok');}
+        catch(error) {setMsg(message,error.message,'err');}
+        finally {button.disabled=false;}
+      };
+    }
+    adminForm('bootstrap-form','bootstrap-msg',async()=>{
+      await api('/users/bootstrap-admin',{method:'POST',headers:{'X-Bootstrap-Token':$('bootstrap-token').value}});
+      $('bootstrap-token').value='';await refreshIdentity();
+    });
+    adminForm('tag-form','tag-msg',async()=>{
+      await api('/problems/tag',{method:'POST',body:JSON.stringify({name:$('tag-name').value,slug:$('tag-slug').value})}); await loadTags();
+    });
+    adminForm('promote-form','promote-msg',()=>api('/users/'+encodeURIComponent($('promote-user').value)+'/promote',{method:'POST'}));
+    adminForm('problem-form','problem-msg',async()=>{
+      const data=new FormData();
+      for(const [key,id] of [['id','new-id'],['title','new-title'],['description','new-description'],['difficulty','new-difficulty'],['input_desc','new-input-desc'],['output_desc','new-output-desc'],['time_limit_sec','new-time'],['memory_limit_mb','new-memory']]) data.set(key,$(id).value);
+      data.set('tags',JSON.stringify($('new-tags').value.split(',').map(x=>x.trim()).filter(Boolean)));
+      data.set('constraints',JSON.stringify($('new-constraints').value.split('\n').filter(Boolean)));
+      data.set('sample_io',JSON.stringify({[$('new-sample-input').value]:$('new-sample-output').value}));
+      data.set('visibility',$('new-visible').checked?'true':'false'); data.set('tests_zip',$('new-tests').files[0]);
+      await api('/problems/',{method:'POST',body:data}); await loadProblems();
+    });
+
+    /* ============ Submissions ============ */
+    $('submit-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      if (!getToken()) {
+        setMsg('submit-msg', 'Log in first to submit a solution.', 'err');
+        return;
+      }
+      if(new TextEncoder().encode($('sub-code').value).length>65536) {setMsg('submit-msg','Source must be at most 64 KB.','err');return;}
+      const submitButton=ev.submitter;submitButton.disabled=true;
+      setMsg('submit-msg', 'Uploading…', '');
+      api('/submissions/', {
+        method: 'POST',
+        body: JSON.stringify({
+          problem_id: $('sub-problem').value.trim(),
+          language: $('sub-language').value,
+          code: $('sub-code').value
+        })
+      }).then(function (s) {
+        setMsg('submit-msg', 'Submitted as #' + s.id + ' — judging…', 'ok');
+        showSubmission(s);
+        pollVerdict(s.id);
+        loadMine();
+      }).catch(function (err) {
+        setMsg('submit-msg', err.status === 401 ? 'Session expired — log in again.' : err.message, 'err');
+      }).finally(()=>{submitButton.disabled=false;});
+    });
+
+    function showSubmission(s) {
+      $('verdict-box').hidden = false;
+      $('verdict-meta').innerHTML =
+        'Problem <code>' + esc(s.problem_id) + '</code> &middot; ' + verdictBadge(s.verdict) +
+        (s.walltime_ms != null ? ' &middot; ' + esc(s.walltime_ms) + ' ms' : '') +
+        (s.memory_kb != null ? ' &middot; ' + esc(s.memory_kb) + ' KB' : '');
+      $('verdict-output').textContent = s.output || (s.verdict === 'PD' ? 'Waiting for the judge…' : 'No output.');
+    }
+
+    let pollGeneration=0, latestSubmission=null;
+    async function pollVerdict(id) {
+      latestSubmission=id; const generation=++pollGeneration; $('resume-poll').hidden=true;
+      for(let attempt=0;attempt<120 && generation===pollGeneration;attempt++) {
+        try {
+          const result=await api('/submissions/'+id);
+          if(generation!==pollGeneration) return;
+          showSubmission(result);
+          if(result.verdict!=='PD') {setMsg('submit-msg','Judging complete.','ok');loadMine();loadProblems();return;}
+        } catch(error) {
+          if(generation!==pollGeneration) return;
+          setMsg('submit-msg','Could not check result: '+error.message,'err');$('resume-poll').hidden=false;return;
+        }
+        await new Promise(resolve=>setTimeout(resolve,1500));
+      }
+      if(generation===pollGeneration) {setMsg('submit-msg','Still queued or judging. Your submission is saved; check again shortly.','');$('resume-poll').hidden=false;}
+    }
+    $('resume-poll').onclick=()=>{if(latestSubmission) pollVerdict(latestSubmission);};
+    $('mine').onclick=e=>{const b=e.target.closest('[data-submission]');if(b) pollVerdict(Number(b.dataset.submission));};
+
+    function loadMine() {
+      var box = $('mine');
+      if (!getToken()) {
+        box.innerHTML = '<p class="hint">Log in to see your recent submissions.</p>';
+        return;
+      }
+      api('/submissions/?limit=10').then(function (list) {
+        if (!list || !list.length) {
+          box.innerHTML = '<p class="hint">No submissions yet.</p>';
+          return;
+        }
+        var rows = list.map(function (s) {
+          return '<tr>' +
+            '<td><button type="button" data-submission="' + s.id + '">#' + s.id + '</button></td>' +
+            '<td><code>' + esc(s.problem_id) + '</code></td>' +
+            '<td>' + verdictBadge(s.verdict) + '</td>' +
+            '<td>' + esc(fmtDate(s.submitted_at)) + '</td>' +
+            '<td>' + (s.walltime_ms != null ? esc(s.walltime_ms) + ' ms' : '—') + '</td>' +
+            '</tr>';
+        }).join('');
+        box.innerHTML = '<table><thead><tr><th>ID</th><th>Problem</th><th>Verdict</th><th>Submitted</th><th>Time</th></tr></thead><tbody>' + rows + '</tbody></table>';
+      }).catch(function (err) {
+        box.innerHTML = '<p class="hint">' + esc(err.message) + '</p>';
+      });
+    }
+
+    /* ============ Boot ============ */
+    loadProblems();
+    loadTags();
+    refreshIdentity();
+    loadMine();
+  </script>
+</body>
+</html>

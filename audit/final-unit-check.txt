@@ -1,0 +1,53 @@
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+
+[notice] A new release of pip is available: 25.0.1 -> 26.2.1
+[notice] To update, run: pip install --upgrade pip
+reformatted /work/api/app/database.py
+reformatted /work/api/app/schemas/submissions.py
+reformatted /work/api/app/schemas/problems.py
+reformatted /work/api/app/utils/password_manager.py
+reformatted /work/api/app/schemas/user.py
+reformatted /work/judge/judge_worker/__init__.py
+reformatted /work/api/app/body_limit.py
+reformatted /work/api/app/routes/auth.py
+reformatted /work/judge/judge_worker/database.py
+reformatted /work/api/app/utils/redis_utils.py
+reformatted /work/judge/judge_worker/storage_adapter.py
+reformatted /work/judge/judge_worker/types.py
+reformatted /work/api/app/main.py
+reformatted /work/judge/sandbox_manager/__init__.py
+reformatted /work/judge/judge_worker/redis_queue.py
+reformatted /work/api/app/utils/oauth2.py
+reformatted /work/api/app/routes/users.py
+reformatted /work/judge/utils.py
+reformatted /work/api/app/routes/submissions.py
+reformatted /work/scripts/reconcile_database.py
+reformatted /work/judge/judge_worker/pipeline.py
+reformatted /work/shared/core/__init__.py
+reformatted /work/shared/core/database.py
+reformatted /work/judge/judge_worker/worker.py
+reformatted /work/shared/models/__init__.py
+reformatted /work/shared/models/enums.py
+reformatted /work/scripts/setup_secrets.py
+reformatted /work/judge/run.py
+reformatted /work/scripts/upgrade_local.py
+reformatted /work/shared/models/job.py
+reformatted /work/api/app/routes/problems.py
+reformatted /work/shared/jobs.py
+reformatted /work/shared/models/problem.py
+reformatted /work/judge/judge_worker/executor.py
+reformatted /work/shared/core/storage.py
+reformatted /work/shared/models/user.py
+reformatted audit/create_stack.py
+reformatted /work/judge/sandbox_manager/main.py
+reformatted /work/shared/models/submission.py
+reformatted config.py
+reformatted audit/test_regressions.py
+reformatted audit/resilience_probe.py
+reformatted audit/integration_probe.py
+reformatted audit/verification_probe.py
+
+All done! ✨ 🍰 ✨
+44 files reformatted, 5 files left unchanged.
+.................                                                        [100%]
+17 passed in 0.88s

@@ -1,0 +1,263 @@
+FFFFFFF.                                                                 [100%]
+=================================== FAILURES ===================================
+_________________________ test_runtime_is_milliseconds _________________________
+
+    def test_runtime_is_milliseconds():
+        result, _ = executor_case()
+>       assert result.runtime_ms == 350
+E       AssertionError: assert 0 == 350
+E        +  where 0 = RunResult(ok=True, verdict=<Verdict.ACCEPTED: 'AC'>, output='3\n', exit_code=0, runtime_ms=0, memory_kb=1024).runtime_ms
+
+audit/test_regressions.py:36: AssertionError
+___________________________ test_stdin_receives_eof ____________________________
+
+    def test_stdin_receives_eof():
+        _, sock = executor_case()
+>       assert sock._sock.shutdown.called, 'stdin write side never closed; EOF readers hang'
+E       AssertionError: stdin write side never closed; EOF readers hang
+E       assert False
+E        +  where False = <Mock name='mock.api.exec_start()._sock.shutdown' id='4534744608'>.called
+E        +    where <Mock name='mock.api.exec_start()._sock.shutdown' id='4534744608'> = <Mock name='mock.api.exec_start()._sock' id='4534742928'>.shutdown
+E        +      where <Mock name='mock.api.exec_start()._sock' id='4534742928'> = <Mock name='mock.api.exec_start()' id='4534741920'>._sock
+
+audit/test_regressions.py:41: AssertionError
+________________ test_missing_timing_statistics_does_not_crash _________________
+
+    def test_missing_timing_statistics_does_not_crash():
+>       result, _ = executor_case(b'')
+                    ^^^^^^^^^^^^^^^^^^
+
+audit/test_regressions.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+audit/test_regressions.py:30: in executor_case
+    result = executor.run_program(SimpleNamespace(id='audit-container'),Language.PYTHON,'/workspace/main.py','1 2\n','3\n',2,65536)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <judge.judge_worker.executor.JudgeExecutor object at 0x10e48fc50>
+container = namespace(id='audit-container'), language = <Language.PYTHON: 'PY'>
+executable_path = '/workspace/main.py', input_data = '1 2\n'
+expected_output = '3\n', time_limit_sec = 2, memory_limit_kb = 65536
+
+    def run_program(
+        self,
+        container,
+        language: Language,
+        executable_path: str,
+        input_data: str,
+        expected_output: str,
+        time_limit_sec: int,
+        memory_limit_kb: int,
+    ) -> RunResult:
+    
+        # Build command
+        if language == Language.C:
+            inner_cmd = f"{executable_path}"
+        elif language == Language.CPP:
+            inner_cmd = f"{executable_path}"
+        elif language == Language.PYTHON:
+            inner_cmd = f"python3 {executable_path}"
+        else:
+            raise ValueError(f"Unsupported language: {language}")
+    
+        cmd = [
+            "/bin/sh",
+            "-lc",
+            f"/usr/bin/time -f \'%e %M\' timeout -s KILL {time_limit_sec}s sh -c \"{inner_cmd} 2>/dev/null\""
+        ]
+    
+        exec_id = self.client.api.exec_create(
+            container.id,
+            cmd=cmd,
+            # stdin=False,
+            stdin=True,
+            tty=False,
+            user='run'
+        )["Id"]
+    
+        sock = self.client.api.exec_start(
+            exec_id,
+            socket=True,
+            tty=False,
+        )
+    
+        # send stdin
+        sock._sock.sendall(input_data.encode())
+    
+        stdout_chunks = []
+        stderr_chunks = []
+    
+        for stream_id, payload in frames_iter(socket=sock, tty=False):
+            if stream_id == 1:
+                stdout_chunks.append(payload)
+            elif stream_id == 2:
+                stderr_chunks.append(payload)
+    
+        sock.close()
+    
+        inspect = self.client.api.exec_inspect(exec_id)
+        exit_code = inspect["ExitCode"]
+    
+        stdout_output = b"".join(stdout_chunks).decode("utf-8", errors="replace")
+        stderr_output = b"".join(stderr_chunks).decode("utf-8", errors="replace")
+    
+>       stats = stderr_output.split("\n")[-2].split()
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       IndexError: list index out of range
+
+judge/judge_worker/executor.py:118: IndexError
+________________ test_dead_worker_requeues_inflight_submission _________________
+
+    def test_dead_worker_requeues_inflight_submission():
+        obj, _ = orchestrator(False)
+        obj.check_heartbeat()
+>       obj.redis.lpush.assert_called_once_with(REDIS_JOB_LIST,123)
+
+audit/test_regressions.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.lpush' id='4534733856'>, args = ('judge:queue', 123)
+kwargs = {}
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'lpush' to be called once. Called 0 times.
+
+/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py:997: AssertionError
+_____________ test_scaling_down_does_not_lose_inflight_submission ______________
+
+    def test_scaling_down_does_not_lose_inflight_submission():
+        obj, _ = orchestrator(True)
+        obj.stop_worker()
+>       obj.redis.lpush.assert_called_once_with(REDIS_JOB_LIST,123)
+
+audit/test_regressions.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.lpush' id='4535080944'>, args = ('judge:queue', 123)
+kwargs = {}
+
+    def assert_called_once_with(self, /, *args, **kwargs):
+        """assert that the mock was called exactly once and that that call was
+        with the specified arguments."""
+        if not self.call_count == 1:
+            msg = ("Expected '%s' to be called once. Called %s times.%s"
+                   % (self._mock_name or 'mock',
+                      self.call_count,
+                      self._calls_repr()))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'lpush' to be called once. Called 0 times.
+
+/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py:997: AssertionError
+_______ test_missing_heartbeat_does_not_join_live_worker_without_timeout _______
+
+    def test_missing_heartbeat_does_not_join_live_worker_without_timeout():
+        obj, process = orchestrator(True)
+        obj.redis.get.return_value = None
+        obj.check_heartbeat()
+>       assert not any(call.args == () and call.kwargs == {} for call in process.join.call_args_list), 'unbounded join on a live worker can freeze orchestration'
+E       AssertionError: unbounded join on a live worker can freeze orchestration
+E       assert not True
+E        +  where True = any(<generator object test_missing_heartbeat_does_not_join_live_worker_without_timeout.<locals>.<genexpr> at 0x10e476e90>)
+
+audit/test_regressions.py:76: AssertionError
+_______ test_queue_connection_failure_does_not_raise_unbound_local_error _______
+
+self = <judge.judge_worker.worker.JudgeWorker object at 0x10e4fe510>
+
+    def _consume_from_list(self) -> None:
+        while self.redis.get(SHUTDOWN_KEY) != "1" and self.redis.get(self.local_shutdown_key) != "1":
+    
+            self.redis.set(self.local_heartbeat_key, time.time())
+    
+            try:
+>               item = self.redis.brpop(REDIS_JOB_LIST, timeout=1)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+judge/judge_worker/worker.py:46: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py:1176: in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py:1180: in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <Mock name='mock.brpop' id='4535085312'>, args = ('judge:queue',)
+kwargs = {'timeout': 1}
+
+    def _execute_mock_call(self, /, *args, **kwargs):
+        # separate from _increment_mock_call so that awaited functions are
+        # executed separately from their call, also AsyncMock overrides this method
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+>               raise effect
+E               ConnectionError: simulated outage before a job is received
+
+/Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/unittest/mock.py:1241: ConnectionError
+
+During handling of the above exception, another exception occurred:
+
+    def test_queue_connection_failure_does_not_raise_unbound_local_error():
+        obj = JudgeWorker.__new__(JudgeWorker)
+        obj.redis = Mock()
+        obj.redis.get.side_effect = ['0','0','1']
+        obj.redis.brpop.side_effect = ConnectionError('simulated outage before a job is received')
+        obj.local_shutdown_key='audit:shutdown'
+        obj.local_heartbeat_key='audit:heartbeat'
+        obj.log=Mock()
+        with patch('judge.judge_worker.worker.time.sleep'):
+>           obj._consume_from_list()
+
+audit/test_regressions.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <judge.judge_worker.worker.JudgeWorker object at 0x10e4fe510>
+
+    def _consume_from_list(self) -> None:
+        while self.redis.get(SHUTDOWN_KEY) != "1" and self.redis.get(self.local_shutdown_key) != "1":
+    
+            self.redis.set(self.local_heartbeat_key, time.time())
+    
+            try:
+                item = self.redis.brpop(REDIS_JOB_LIST, timeout=1)
+                if item is None:
+                    continue
+                _, payload = item
+                submission_id = int(payload)
+    
+                self.log.info(f"Processing submission with ID: {submission_id}")
+                self._set_submission(submission_id)
+                result = self.pipeline.process_submission(submission_id)
+                self._delete_submission(submission_id)
+                self.log.info(f"Processed submission with ID: {result.submission_id} - Verdict: {result.verdict.value}")
+            except KeyboardInterrupt:
+                self.log.info("Shutting down...")
+                return
+            except ValueError as e:
+                self.log.error(e)
+            except Exception as e:
+>               self.log.error(f"Processing of submission ID : {submission_id} failed with error: {e} - Attempting Retry")
+                                                                ^^^^^^^^^^^^^
+E               UnboundLocalError: cannot access local variable 'submission_id' where it is not associated with a value
+
+judge/judge_worker/worker.py:63: UnboundLocalError
+=========================== short test summary info ============================
+FAILED audit/test_regressions.py::test_runtime_is_milliseconds - AssertionErr...
+FAILED audit/test_regressions.py::test_stdin_receives_eof - AssertionError: s...
+FAILED audit/test_regressions.py::test_missing_timing_statistics_does_not_crash
+FAILED audit/test_regressions.py::test_dead_worker_requeues_inflight_submission
+FAILED audit/test_regressions.py::test_scaling_down_does_not_lose_inflight_submission
+FAILED audit/test_regressions.py::test_missing_heartbeat_does_not_join_live_worker_without_timeout
+FAILED audit/test_regressions.py::test_queue_connection_failure_does_not_raise_unbound_local_error
+7 failed, 1 passed in 3.66s

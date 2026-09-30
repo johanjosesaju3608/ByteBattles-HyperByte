@@ -12,6 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --group judge --locked
 
 COPY config.py .
+COPY scripts ./scripts
 COPY shared ./shared
 COPY judge ./judge
 

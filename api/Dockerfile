@@ -11,6 +11,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --group api --locked
 
 COPY config.py .
+COPY scripts ./scripts
 COPY shared ./shared
 COPY api ./api
 

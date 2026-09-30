@@ -1,7 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Dict, List
 
 from shared.models import Difficulty
+
 
 class ProblemResponse(BaseModel):
     id: str
@@ -9,6 +10,8 @@ class ProblemResponse(BaseModel):
     difficulty: Difficulty
     tags: List[str]
     accepted_submissions: int
+    total_submissions: int = 0
+
 
 class ProblemDetailResponse(ProblemResponse):
     description: str
@@ -25,14 +28,17 @@ class ProblemDetailResponse(ProblemResponse):
     editorial: str | None
     visibility: bool
 
+
 class ProblemArrayDataValidator(BaseModel):
     tags: List[str]
     constraints: List[str]
     sample_io: Dict[str, str]
 
+
 class TagCreate(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(min_length=1, max_length=80)
+    slug: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{0,39}$")
+
 
 class ProblemCreateResponse(BaseModel):
     id: str
@@ -40,3 +46,11 @@ class ProblemCreateResponse(BaseModel):
     difficulty: Difficulty
     tags: List[str]
     testcases: int
+
+
+class ProblemPage(BaseModel):
+    items: List[ProblemResponse]
+    total: int
+    page: int
+    limit: int
+    has_more: bool

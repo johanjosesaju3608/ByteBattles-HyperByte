@@ -7,7 +7,7 @@ services:
     volumes:
       - "./logs:/src/logs"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     networks:
       - bytebattles_net
     depends_on:
@@ -18,6 +18,11 @@ services:
       minio:
         condition: service_healthy
     restart: always
+    healthcheck:
+      test: ["CMD", "/src/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     env_file:
       - .env
   
@@ -31,6 +36,8 @@ services:
     networks:
       - bytebattles_net
     depends_on:
+      api:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:
@@ -42,7 +49,7 @@ services:
       - .env
   
   postgres:
-    image: postgres:latest
+    image: postgres:16
     volumes:
       - "bytebattles_postgres:/var/lib/postgresql/data"
     networks:
@@ -73,7 +80,8 @@ services:
   
   minio:
     command: server /data
-    image: minio/minio
+    image: cgr.dev/chainguard/minio:latest
+    user: root
     volumes:
       - "bytebattles_minio:/data"
     networks:
@@ -83,7 +91,7 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      test: ["CMD", "mc", "ready", "local"]
       interval: 10s
       timeout: 5s
       retries: 5

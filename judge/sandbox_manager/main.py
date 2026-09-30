@@ -3,15 +3,27 @@ import redis
 import json
 import threading
 import uuid
+import time
+from datetime import datetime, timezone
+from shared.core import SessionLocal
+from shared.models import JudgeJob
+from config import SANDBOX_POOL_ID, WORKSPACE_DIR
 from queue import Queue, Empty as QueueEmpty
 
 from shared.models import Language, IMAGE
 
 from config import REDIS_HOST, REDIS_PORT, REDIS_DB
-from config import MAX_PIDS, MAX_MEMCAP_GB, REDIS_RESULT_CHANNEL, WARM_QUEUE_PREFIX, SHUTDOWN_KEY
+from config import (
+    MAX_PIDS,
+    MAX_MEMCAP_GB,
+    REDIS_RESULT_CHANNEL,
+    WARM_QUEUE_PREFIX,
+    SHUTDOWN_KEY,
+)
 from config import CONTAINER_POOL_THRESHOLD, CONTAINER_WORKER_COUNT
 
 from ..utils import setup_logger
+
 
 class SandboxManager:
 
@@ -23,13 +35,10 @@ class SandboxManager:
         pool_threshold=CONTAINER_POOL_THRESHOLD,
     ):
 
-        self.client = docker.from_env()
+        self.client = docker.from_env(timeout=10)
 
         self.redis = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            db=redis_db,
-            decode_responses=True
+            host=redis_host, port=redis_port, db=redis_db, decode_responses=True
         )
 
         self.pubsub = self.redis.pubsub()
@@ -71,9 +80,7 @@ class SandboxManager:
 
     def count(self, language: Language) -> int:
 
-        return self.redis.llen(
-            self.warm_queue(language)
-        )
+        return self.redis.llen(self.warm_queue(language))
 
     # =================================================
     # CREATE SANDBOX
@@ -86,24 +93,34 @@ class SandboxManager:
         container = self.client.containers.create(
             name=f"sandbox_{language}_{uuid.uuid4().hex}",
             image=image,
-
             tty=True,
             detach=True,
-            auto_remove=True,
-
+            auto_remove=False,
+            labels={
+                "bytebattles.pool": SANDBOX_POOL_ID,
+                "bytebattles.sandbox-version": "3",
+            },
+            read_only=True,
+            nano_cpus=1_000_000_000,
+            tmpfs={
+                WORKSPACE_DIR: "size=64m,uid=1000,gid=1000,mode=0700,nosuid,nodev,exec",
+                "/tmp": "size=32m,uid=1000,gid=1000,mode=1777,nosuid,nodev,noexec",
+            },
             cap_drop=["ALL"],
             network_mode="none",
             security_opt=["no-new-privileges"],
-
             mem_limit=str(MAX_MEMCAP_GB) + "g",
             memswap_limit=str(MAX_MEMCAP_GB) + "g",
-
             pids_limit=MAX_PIDS,
             user="run",
         )
 
         # START CONTAINER
-        container.start()
+        try:
+            container.start()
+        except Exception:
+            container.remove(force=True)
+            raise
 
         # HEALTHCHECK
         if not self.healthcheck(container):
@@ -118,20 +135,17 @@ class SandboxManager:
         container_id = container.id
 
         # PUSH TO WARM QUEUE
-        self.redis.lpush(
-            self.warm_queue(language),
-            container_id
-        )
+        self.redis.lpush(self.warm_queue(language), container_id)
 
         return container_id
-    
+
     # =================================================
     # CREATOR WORKER
     # =================================================
 
     def creator_worker(self):
         while not self.stop_event.is_set():
-            
+
             try:
                 language = self.task_queue.get(timeout=1)
             except QueueEmpty:
@@ -144,8 +158,49 @@ class SandboxManager:
             except Exception as e:
                 self.task_queue.put(language)
                 self.log.error(e)
+                self.stop_event.wait(2)
             finally:
                 self.task_queue.task_done()
+
+    def reconcile(self):
+        queued = set()
+        for lang in Language:
+            key = self.warm_queue(lang.value)
+            for cid in self.redis.lrange(key, 0, -1):
+                try:
+                    c = self.client.containers.get(cid)
+                    valid = (
+                        c.status == "running"
+                        and c.labels.get("bytebattles.sandbox-version") == "3"
+                    )
+                except docker.errors.NotFound:
+                    valid = False
+                if valid:
+                    queued.add(cid)
+                else:
+                    self.redis.lrem(key, 0, cid)
+                    try:
+                        self.client.containers.get(cid).remove(force=True)
+                    except docker.errors.NotFound:
+                        pass
+            self.maintain_pool(lang.value)
+        with SessionLocal() as db:
+            active = {
+                row[0]
+                for row in db.query(JudgeJob.container_id)
+                .filter(JudgeJob.lease_until > datetime.now(timezone.utc))
+                .all()
+            }
+        for c in self.client.containers.list(
+            all=True, filters={"label": "bytebattles.pool=" + SANDBOX_POOL_ID}
+        ):
+            created = datetime.fromisoformat(c.attrs["Created"].replace("Z", "+00:00"))
+            if (
+                c.id not in queued
+                and c.id not in active
+                and (datetime.now(timezone.utc) - created).total_seconds() > 60
+            ):
+                c.remove(force=True)
 
     # =================================================
     # MAINTAIN POOL
@@ -154,17 +209,19 @@ class SandboxManager:
     def maintain_pool(self, language: Language):
 
         with self.pending_lock:
-            deficit = self.pool_threshold - (self.count(language) + self.pending[language])
+            deficit = self.pool_threshold - (
+                self.count(language) + self.pending[language]
+            )
             if deficit <= 0:
                 return
-            
+
             self.pending[language] += deficit
 
         self.log.info(f"Maintaing pool - {language} - creating {deficit} containers")
 
         for _ in range(deficit):
             self.task_queue.put(language)
-    
+
     # =================================================
     # CLEAN POOL
     # =================================================
@@ -178,7 +235,7 @@ class SandboxManager:
             try:
                 container_id = self.redis.rpop(self.warm_queue(language))
                 container = self.client.containers.get(container_id)
-                container.stop(timeout=0)
+                container.remove(force=True)
 
             except Exception as e:
                 self.log.error(e)
@@ -201,7 +258,11 @@ class SandboxManager:
 
             self.log.info(f"Running...")
 
+            last_reconcile = 0
             while self.redis.get(SHUTDOWN_KEY) != "1":
+                if time.monotonic() - last_reconcile > 3:
+                    self.reconcile()
+                    last_reconcile = time.monotonic()
                 message = self.pubsub.get_message(timeout=1)
                 if not message:
                     continue

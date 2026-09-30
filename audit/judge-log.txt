@@ -1,0 +1,38 @@
+judge-1  | 2026-09-30 06:39:28,636 | 1 | INFO | Starting sandbox manager
+judge-1  | 2026-09-30 06:39:28,644 | 1 | INFO | Running...
+judge-1  | 2026-09-30 06:39:28,645 | 1 | INFO | Spawning worker with ID: 1
+judge-1  | 2026-09-30 06:39:28,646 | 8 | INFO | Maintaing pool - C - creating 1 containers
+judge-1  | 2026-09-30 06:39:28,647 | 8 | INFO | Maintaing pool - CPP - creating 1 containers
+judge-1  | 2026-09-30 06:39:28,647 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:28,647 | 8 | INFO | Running...
+judge-1  | 2026-09-30 06:39:28,657 | 10 | INFO | judge worker starting
+judge-1  | 2026-09-30 06:39:28,658 | 10 | INFO | Processing submission with ID: 1
+judge-1  | 2026-09-30 06:39:28,903 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:29,094 | 10 | INFO | Processed submission with ID: 1 - Verdict: AC
+judge-1  | 2026-09-30 06:39:29,188 | 10 | INFO | Processing submission with ID: 2
+judge-1  | 2026-09-30 06:39:29,190 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:31,276 | 10 | INFO | Processed submission with ID: 2 - Verdict: TLE
+judge-1  | 2026-09-30 06:39:31,308 | 10 | INFO | Processing submission with ID: 3
+judge-1  | 2026-09-30 06:39:31,311 | 8 | INFO | Maintaing pool - CPP - creating 1 containers
+judge-1  | 2026-09-30 06:39:31,622 | 10 | INFO | Processed submission with ID: 3 - Verdict: AC
+judge-1  | 2026-09-30 06:39:31,727 | 10 | INFO | Processing submission with ID: 4
+judge-1  | 2026-09-30 06:39:31,728 | 8 | INFO | Maintaing pool - C - creating 1 containers
+judge-1  | 2026-09-30 06:39:31,828 | 10 | INFO | Processed submission with ID: 4 - Verdict: AC
+judge-1  | 2026-09-30 06:39:31,938 | 10 | INFO | Processing submission with ID: 5
+judge-1  | 2026-09-30 06:39:31,939 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:32,002 | 10 | INFO | Processed submission with ID: 5 - Verdict: WA
+judge-1  | 2026-09-30 06:39:32,154 | 10 | INFO | Processing submission with ID: 6
+judge-1  | 2026-09-30 06:39:32,155 | 8 | INFO | Maintaing pool - C - creating 1 containers
+judge-1  | 2026-09-30 06:39:32,211 | 10 | INFO | Processed submission with ID: 6 - Verdict: CE
+judge-1  | 2026-09-30 06:39:32,365 | 10 | INFO | Processing submission with ID: 7
+judge-1  | 2026-09-30 06:39:32,367 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:32,438 | 10 | INFO | Processed submission with ID: 7 - Verdict: RE
+judge-1  | 2026-09-30 06:39:32,578 | 10 | INFO | Processing submission with ID: 8
+judge-1  | 2026-09-30 06:39:32,580 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:34,627 | 10 | INFO | Processed submission with ID: 8 - Verdict: TLE
+judge-1  | 2026-09-30 06:39:34,641 | 10 | INFO | Processing submission with ID: 9
+judge-1  | 2026-09-30 06:39:34,643 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:35,077 | 10 | INFO | Processed submission with ID: 9 - Verdict: AC
+judge-1  | 2026-09-30 06:39:35,282 | 10 | INFO | Processing submission with ID: 10
+judge-1  | 2026-09-30 06:39:35,284 | 8 | INFO | Maintaing pool - PY - creating 1 containers
+judge-1  | 2026-09-30 06:39:35,322 | 10 | INFO | Processed submission with ID: 10 - Verdict: AC

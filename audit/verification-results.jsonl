@@ -1,0 +1,26 @@
+{"name": "register_login_bootstrap", "status": "working"}
+{"name": "refresh_token_lifetime", "difference_seconds": 603000}
+{"name": "restored_tag_endpoint", "status": 201}
+{"name": "public_verified_profile", "status": 200}
+{"name": "create_problem", "response": [201, {"id": "SUM001", "title": "Audit SUM001", "difficulty": "EASY", "tags": ["audit"], "testcases": 1}]}
+{"name": "problem_page_one", "status": 200, "ids": ["SUM001"]}
+{"name": "nonadmin_create_problem", "status": 403}
+FIXTURES_READY
+{"name": "python_line_input", "status": 200, "submission_id": 1, "expected": "AC", "verdict": "AC", "runtime_ms": 0, "elapsed_seconds": 0.22, "output": null}
+{"name": "python_read_until_eof", "status": 200, "submission_id": 2, "expected": "AC", "verdict": "AC", "runtime_ms": 0, "elapsed_seconds": 0.22, "output": null}
+{"name": "cpp_correct", "status": 200, "submission_id": 3, "expected": "AC", "verdict": "AC", "runtime_ms": 0, "elapsed_seconds": 0.42, "output": null}
+{"name": "c_correct", "status": 200, "submission_id": 4, "expected": "AC", "verdict": "AC", "runtime_ms": 0, "elapsed_seconds": 0.42, "output": null}
+{"name": "wrong_answer", "status": 200, "submission_id": 5, "expected": "WA", "verdict": "WA", "runtime_ms": 0, "elapsed_seconds": 0.22, "output": "99\n"}
+{"name": "compilation_error", "status": 200, "submission_id": 6, "expected": "CE", "verdict": "CE", "runtime_ms": 0, "elapsed_seconds": 0.22, "output": "/workspace/main.c:1:11: error: expected declaration specifiers or '...' before '{' token\n    1 | int main( {\n      |           ^\n"}
+{"name": "runtime_error", "status": 200, "submission_id": 7, "expected": "RE", "verdict": "RE", "runtime_ms": 0, "elapsed_seconds": 0.22, "output": "Traceback (most recent call last):\n  File \"/workspace/main.py\", line 1, in <module>\n    raise RuntimeError(\"audit\")\nRuntimeError: audit\nCommand exited with non-zero status 1"}
+{"name": "time_limit", "status": 200, "submission_id": 8, "expected": "TLE", "verdict": "TLE", "runtime_ms": 2000, "elapsed_seconds": 2.27, "output": null}
+{"name": "runtime_units", "status": 200, "submission_id": 9, "expected": "AC", "verdict": "AC", "runtime_ms": 360, "elapsed_seconds": 0.64, "output": null}
+{"name": "anonymous_source_access", "status": 401, "source_visible": false}
+{"name": "submission_counters", "accepted": 5, "total": 9, "actual_rows": 9}
+{"name": "failed_testcase_lookup", "has_stored_key": true, "returned_testcase": "1 2\n"}
+{"name": "negative_problem_limits", "response": [422, {"detail": [{"type": "greater_than_equal", "loc": ["body", "memory_limit_mb"], "msg": "Input should be greater than or equal to 16", "input": "-1", "ctx": {"ge": 16}}, {"type": "greater_than_equal", "loc": ["body", "time_limit_sec"], "msg": "Input should be greater than or equal to 1", "input": "-1", "ctx": {"ge": 1}}]}]}
+{"name": "empty_test_fixture_creation", "response": [201, {"id": "EMPTY1", "title": "Audit EMPTY1", "difficulty": "EASY", "tags": ["audit"], "testcases": 1}]}
+{"name": "no_testcases", "status": 200, "submission_id": 10, "expected": "SKP", "verdict": "SKP", "runtime_ms": null, "elapsed_seconds": 6.85, "output": "Judge infrastructure failed after bounded retries. Please resubmit."}
+{"name": "queue_outage_persistence", "rows_before": 10, "rows_after": 11, "last_verdict": "PD"}
+{"name": "deleted_account_refresh", "status": 401}
+VERIFICATION_COMPLETE

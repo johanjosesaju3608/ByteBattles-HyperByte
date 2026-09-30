@@ -1,0 +1,11 @@
+{"name": "pending_outbox_recovery", "status": "passed"}
+{"name": "memory_limit", "verdict": "MLE", "output": "Command terminated by signal 9", "runtime_ms": 10}
+{"name": "output_limit", "verdict": "RE", "output": "Output limit exceeded.", "runtime_ms": 70}
+{"name": "worker_survives_resource_failures", "verdict": "AC", "output": null, "runtime_ms": 10}
+{"name": "duplicate_queue_idempotency", "before": 9, "after": 10}
+{"name": "worker_crash_recovery", "verdict": "AC", "recovery_seconds": 37.19}
+{"name": "multiple_testcases_and_isolated_workspaces", "status": "passed"}
+{"name": "permissions_size_limits_search", "status": "passed"}
+{"name": "lease_fencing_and_completion", "status": "passed"}
+{"name": "rate_limit", "status": 429, "retry_after": "3"}
+RESILIENCE_COMPLETE

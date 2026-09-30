@@ -1,97 +1,94 @@
-# ByteBattles — Setup Guide
+# Run ByteBattles locally
 
-ByteBattles has two runnable services (**api**, **judge**) plus three infra dependencies (**PostgreSQL**, **Redis**, **MinIO**). The judge also needs **Docker** available to it (it spawns sandbox containers), so running the judge itself inside Docker requires mounting the host's Docker socket — already wired up in `docker-compose.yaml`.
+ByteBattles uses a FastAPI service, a judge, PostgreSQL, Redis, MinIO, and isolated Docker sandboxes. Docker Desktop must be running. The website is bound to your computer only at http://127.0.0.1:8000/app.
 
-The easiest path is Docker Compose end-to-end. A manual/local path is included below for anyone iterating on judge or api code without rebuilding images every time.
+## First installation
 
-## 0. Prerequisites
+From the repository root:
 
-- Docker + Docker Compose
-- Python 3.12+
-- [`uv`](https://docs.astral.sh/uv/) (dependency manager used by this project — see `pyproject.toml` / `uv.lock`)
-
-## 1. Environment file
-
-```bash
-cp .env.example .env
-```
-
-Review `.env` — at minimum change `SECRET_KEY` and the Postgres/MinIO credentials away from the placeholder values before doing anything beyond local dev.
-
-## 2. Docker named volumes (required — compose does *not* create these for you)
-
-`docker-compose.yaml` declares the Postgres and MinIO volumes as `external: true`, so they must exist before `docker compose up`:
-
-```bash
+```sh
+python3 scripts/setup_secrets.py --fresh
 docker volume create bytebattles_postgres
 docker volume create bytebattles_minio
-```
-
-## 3. Build the sandbox images
-
-The judge leases containers from `judge-gcc` and `judge-python` images. Build them once (and again any time you touch `judge/images/*`):
-
-```bash
 cd judge/images
 ./build_command.sh
 cd ../..
+docker compose up --build -d
 ```
 
-## 4. Bring the stack up
+`--fresh` generates database and storage passwords as well as signing/bootstrap secrets. Use it only for a new installation, not an existing initialized database. Keep `.env` private; it is excluded from Git and Docker builds. Startup rejects the example signing key and example database/storage passwords.
 
-```bash
-docker compose up --build
+The API creates database tables and required storage buckets at startup. The judge waits for the API to be healthy. Visit the website at http://127.0.0.1:8000/app, or API documentation at http://127.0.0.1:8000/docs.
+
+## Upgrade an existing local installation
+
+The database password must change in PostgreSQL as well as in `.env`. Editing only `.env` would break the connection. With Docker running:
+
+```sh
+docker compose build api judge
+python3 scripts/upgrade_local.py
 ```
 
-This starts `postgres`, `redis`, `minio`, the `api` (port `8000`), and the `judge` orchestrator. Tables are created automatically on API startup (`Base.metadata.create_all` in `api/app/main.py`) — there is no separate migration step yet.
+This stops the API and judge, saves a private database dump and configuration snapshot in `.backups/`, rotates the database/storage example credentials, adds the job/deletion tables, reconciles historical counters, and creates durable jobs for old pending submissions. Existing users, problems, and stored artifacts are preserved. It then restarts the application. `.backups/` is excluded from Git; keep those files private.
 
-## 5. Create the MinIO buckets
+If an upgrade is interrupted, inspect the last error and `.backups/` before retrying. Never remove database volumes as a recovery shortcut. A backup can be restored using PostgreSQL's `pg_restore`; stop application writers before restoring and use the matching configuration snapshot.
 
-Storage code (`shared/core/storage.py`) does **not** auto-create buckets. After MinIO is up, create the two buckets named in `.env` (`TESTCASE_BUCKET`, `SUBMISSION_BUCKET` — defaults `bytebattles-testcases`, `bytebattles-submission-code`):
+## Create the first administrator
 
-```bash
-# via the MinIO console at http://localhost:9000 (login with S3_ACCESS_KEY / S3_SECRET_KEY), or:
-docker run --rm --network container:$(docker compose ps -q minio) \
-  --entrypoint /bin/sh minio/mc -c "
-    mc alias set local http://localhost:9000 minioadmin minioadmin &&
-    mc mb local/bytebattles-testcases &&
-    mc mb local/bytebattles-submission-code"
+1. Register and log in on the website.
+2. Open **First administrator setup**.
+3. Copy `ADMIN_BOOTSTRAP_TOKEN` from your local `.env` into the token field and submit it.
+4. The first successful bootstrap creates an admin. Further bootstrap requests are rejected, even with the token. Concurrent attempts are serialized in PostgreSQL.
+5. Use **Administration → Promote a teammate** to promote other registered users.
+
+The token is not embedded in the frontend or returned by an API. Ordinary users cannot promote themselves without it. The last administrator cannot delete their account until another administrator exists.
+
+## Create a problem
+
+An administrator can create tags and problems directly in the website. Problem IDs contain 1–6 letters, numbers, hyphens, or underscores.
+
+A testcase ZIP contains matching files in `inputs/` and `outputs/`, optionally inside one parent folder:
+
+```text
+inputs/1.txt
+outputs/1.txt
+inputs/2.txt
+outputs/2.txt
 ```
 
-## 6. Create your first admin user
+Limits: 8 MB compressed, 16 MB expanded, 1 MB per file, 100 pairs. Files must contain UTF-8 text. Example I/O is entered separately on the form. The defaults support time limits of 1–10 seconds and memory limits of 16–512 MB.
 
-Registration always creates a regular `USER`. To get an `ADMIN` (required to create problems/tags), register normally through `/auth/register`, then flip `user_type` to `ADMIN` directly in Postgres:
+## Reliability and verdicts
 
-```bash
-docker compose exec postgres psql -U postgres -d postgres \
-  -c "UPDATE users SET user_type = 'ADMIN' WHERE username = 'your_username';"
+- The API commits a submission and its durable job together. Redis still supplies the work queue. The dispatcher retries delivery when Redis recovers.
+- Workers claim renewable database leases. Expired/crashed work can be reclaimed. A stale worker cannot overwrite a newer attempt, and duplicate jobs cannot double-count acceptance.
+- Infrastructure errors are retried at most three times, then displayed as `SKP` with an explanatory message. `SKP` is a judge failure, not an incorrect solution.
+- Total counts include all persisted submissions. Accepted counts include only `AC`. Legacy counters are repaired by the upgrade script.
+- Each testcase receives a fresh sandbox, finite input, a kernel memory cap, a CPU quota, a compilation/execution deadline, and bounded output. The root filesystem is read-only; writable workspace and temporary directories have size caps. Networking is disabled and capabilities are dropped.
+- Standard outcomes are `AC`, `WA`, `TLE`, `MLE`, `CE`, and `RE`. Output-limit violations use `RE` with a clear message.
+- Source and result details require the owner or an administrator. Hidden testcase content is only returned to administrators.
+
+## Configuration
+
+Additional limits have defaults in `config.py`. Optional `.env` settings include:
+
+```text
+SUBMISSION_RATE_LIMIT=10
+SUBMISSION_RATE_WINDOW=60
+MAX_CODE_BYTES=65536
+MAX_OUTPUT_BYTES=1048576
+COMPILE_TIMEOUT_SEC=15
+JOB_LEASE_SECONDS=30
+MAX_JOB_ATTEMPTS=3
+SANDBOX_POOL_ID=bytebattles
 ```
 
-(There is intentionally no admin-promotion endpoint yet — see [PROBLEM_STATEMENT.md](PROBLEM_STATEMENT.md).)
+Use a different `SANDBOX_POOL_ID` for each independent stack sharing one Docker daemon. Infrastructure retries do not require a user to resubmit. Rate limiting intentionally rejects new submissions with 503 while Redis is unavailable; already accepted jobs remain durable.
 
-## 7. Verify it's alive
+The API currently uses browser-tab session storage for tokens and automatic access-token refresh. Password changes invalidate old tokens. Secret rotation invalidates existing sessions, so log in again after upgrading.
 
-```bash
-curl http://localhost:8000/docs
-```
+## Verification
 
-should return the FastAPI Swagger UI. `docs/endpoints.md` and `docs/openapi.json` describe the routes; `judge/Judge_Architecture.pdf` documents the judge's internals in depth — read it before touching `judge/`.
+The audit folder contains original findings, fixed-code checks, and test results. See `audit/README.md` for the disposable stack workflow. Functional tests use real PostgreSQL/Redis/MinIO and the same sandbox images; they do not run against the main application's data.
 
-## 8. Running api/judge outside Docker (faster local iteration)
-
-```bash
-uv sync --group api --group judge
-```
-
-Point `.env` at `localhost` instead of the service names (`DB_HOST=localhost`, `REDIS_HOST=localhost`, `S3_ENDPOINT_URL=http://localhost:9000`), keep Postgres/Redis/MinIO running via `docker compose up postgres redis minio`, then:
-
-```bash
-uv run uvicorn api.app.main:app --reload          # API, in one shell
-uv run python -m judge.run                        # judge orchestrator, in another
-```
-
-The judge orchestrator needs a working Docker daemon reachable from wherever it runs (it shells out to the Docker API to manage sandbox containers).
-
-## 9. Logs
-
-Both services log to `./logs/` (mounted into the containers) — `logs/orchestrator.log` and friends. Tail these first when something isn't judging.
+Use `docker compose ps` for service status and `docker compose logs api judge` for errors. A normal shutdown is `docker compose stop`; preserve volumes. Public hosting, HTTPS, independent penetration testing, and large-scale benchmarking are outside this local setup.

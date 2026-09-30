@@ -8,7 +8,8 @@ from config import (
     WARM_QUEUE_PREFIX,
 )
 
-from  shared.models import Language, Verdict
+from shared.models import Language, Verdict
+
 
 class RedisQueues:
     def __init__(self, client: redis.Redis):
@@ -18,7 +19,12 @@ class RedisQueues:
         return f"{WARM_QUEUE_PREFIX}:{language}"
 
     def publish_event(self, payload: dict[str, Any]) -> None:
-        self.r.publish(REDIS_RESULT_CHANNEL, json.dumps(payload, separators=(",", ":")))
+        try:
+            self.r.publish(
+                REDIS_RESULT_CHANNEL, json.dumps(payload, separators=(",", ":"))
+            )
+        except redis.RedisError:
+            pass  # Periodic pool reconciliation also replenishes sandboxes.
 
     def acquire_warm_sandbox(self, language: Language, timeout: int = 0) -> str | None:
         result = self.r.brpop(self.warm_queue(language), timeout=timeout)
